@@ -1,0 +1,32 @@
+const Discord = require('discord.js');
+
+const client = new Discord.Client();
+const TOKEN = 'YOUR_DISCORD_BOT_TOKEN';
+const PREFIX = '!'; // 디스코드 봇의 접두사
+
+client.on('ready', () => {
+  console.log(`${client.user.tag} is now online.`);
+});
+
+client.on('message', (message) => {
+  if (message.author.bot) return;
+
+  if (message.content.startsWith(PREFIX + '문의')) {
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+    const inquiry = args.join(' ');
+
+    // 문의 내용을 디스코드 서버의 특정 채널로 전송
+    const channel = client.channels.cache.get('YOUR_CHANNEL_ID'); // 메시지를 전송할 채널의 ID를 입력하세요.
+
+    if (!channel) {
+      return message.channel.send('문의를 전송할 채널을 찾을 수 없습니다.');
+    }
+
+    channel.send(`**${message.author.username}**님의 문의: ${inquiry}`);
+
+    message.channel.send('문의가 전송되었습니다. 최대한 빠르게 답변드리겠습니다.');
+  }
+});
+
+client.login(TOKEN);
