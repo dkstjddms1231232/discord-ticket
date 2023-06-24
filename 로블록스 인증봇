@@ -1,0 +1,69 @@
+const Discord = require('discord.js');
+const axios = require('axios');
+
+const client = new Discord.Client();
+const TOKEN = '디스코드 봇 토큰';
+const GROUP_ID = '로블록스 그룹 ID';
+const AUTH_API_URL = 'https://verify.eryn.io/api/user/';
+const ROLE_ID = '디스코드 역할 ID';
+
+client.on('ready', () => {
+  console.log(`${client.user.tag}이(가) 로그인하였습니다.`);
+});
+
+client.on('message', async (message) => {
+  if (message.author.bot) return;
+
+  if (message.content.startsWith('!verify')) {
+    const discordUserId = message.author.id;
+
+    try {
+      // 디스코드 유저의 로블록스 유저 정보 가져오기
+      const response = await axios.get(AUTH_API_URL + discordUserId);
+
+      if (response.status === 200) {
+        const robloxUsername = response.data.robloxUsername;
+        const robloxUserId = response.data.robloxId;
+
+        // 로블록스 그룹 멤버십 확인
+        const membershipCheckResponse = await axios.get(`https://groups.roblox.com/v1/groups/${GROUP_ID}/users/${robloxUserId}`);
+
+        if (membershipCheckResponse.status === 200) {
+          const isGroupMember = membershipCheckResponse.data.isInGroup;
+
+          if (isGroupMember) {
+            // 그룹 인증 성공
+            const guild = message.guild;
+            const member = guild.members.cache.get(discordUserId);
+            const role = guild.roles.cache.get(ROLE_ID);
+
+            if (member.roles.cache.has(ROLE_ID)) {
+              message.channel.send(`${robloxUsername}님은 이미 역할을 가지고 있습니다.`);
+            } else {
+              member.roles.add(role)
+                .then(() => {
+                  message.channel.send(`${robloxUsername}님, 로블록스 그룹 인증이 완료되었습니다. 역할이 지급되었습니다.`);
+                })
+                .catch((error) => {
+                  console.error('역할 부여 중 오류 발생:', error);
+                  message.channel.send('역할을 부여하는 도중 오류가 발생하였습니다.');
+                });
+            }
+          } else {
+            // 그룹 인증 실패
+            message.channel.send(`${robloxUsername}님, 로블록스 그룹에 소속되어 있지 않습니다.`);
+          }
+        } else {
+          message.channel.send('로블록스 그룹 멤버십을 확인하는 도중 오류가 발생하였습니다.');
+        }
+      } else {
+        message.channel.send('디스코드 유저 정보를 가져오는 도중 오류가 발생하였습니다.');
+      }
+    } catch (error) {
+      console.error('API 호출 중 오류 발생:', error);
+      message.channel.send('인증 과정에서 오류가 발생하였습니다.');
+    }
+  }
+});
+
+client.login(TOKEN);
